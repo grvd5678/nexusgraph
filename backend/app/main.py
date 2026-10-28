@@ -67,6 +67,18 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root_index() -> dict:
+    return {
+        "name": "NexusGraph Autonomous Engineering Brain API",
+        "status": "online",
+        "powered_by": "FalkorDB",
+        "documentation": "/docs",
+        "health": "/api/health",
+        "workspaces": "/api/workspaces",
+    }
+
+
 @app.get("/api/health")
 def health_check(workspace_id: str = "FinPulse-Prod") -> dict:
     return db_manager.health_check(workspace_id)
