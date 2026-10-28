@@ -8,9 +8,17 @@ Why this matters for the Hackathon:
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from falkordb import FalkorDB, Graph
 
+# Load backend/.env first, then fallback to root .env
+_backend_env = Path(__file__).resolve().parents[1] / ".env"
+_root_env = Path(__file__).resolve().parents[2] / ".env"
+if _backend_env.exists():
+    load_dotenv(_backend_env)
+if _root_env.exists():
+    load_dotenv(_root_env)
 load_dotenv()
 
 FALKORDB_HOST = os.getenv("FALKORDB_HOST", "localhost")
