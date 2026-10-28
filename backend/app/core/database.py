@@ -17,6 +17,7 @@ FALKORDB_HOST = os.getenv("FALKORDB_HOST", "localhost")
 FALKORDB_PORT = int(os.getenv("FALKORDB_PORT", "6379"))
 FALKORDB_USERNAME = os.getenv("FALKORDB_USERNAME", None)
 FALKORDB_PASSWORD = os.getenv("FALKORDB_PASSWORD", None)
+FALKORDB_SSL = os.getenv("FALKORDB_SSL", "false").lower() in ("true", "1", "yes")
 DEFAULT_WORKSPACE = os.getenv("DEFAULT_WORKSPACE", "NexusDemo")
 
 
@@ -29,6 +30,7 @@ class FalkorDBManager:
             port=FALKORDB_PORT,
             username=FALKORDB_USERNAME,
             password=FALKORDB_PASSWORD,
+            ssl=FALKORDB_SSL,
         )
 
     def get_graph(self, workspace_id: str = DEFAULT_WORKSPACE) -> Graph:
