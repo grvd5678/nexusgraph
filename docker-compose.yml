@@ -1,0 +1,53 @@
+services:
+  # 1. FalkorDB Graph Database Engine & Browser
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: nexusgraph-falkordb
+    ports:
+      - "6379:6379"  # FalkorDB Redis protocol
+      - "3000:3000"  # FalkorDB Browser Web UI
+    volumes:
+      - falkordb_data:/var/lib/falkordb/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 2. FastAPI Multi-Agent Backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: nexusgraph-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+      - DEFAULT_WORKSPACE=FinPulse-Prod
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 3. Next.js 3-Pane Command Center Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: nexusgraph-frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  falkordb_data:
+    driver: local
+

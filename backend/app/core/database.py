@@ -1,0 +1,73 @@
+"""
+FalkorDB Multi-Tenant Connection Manager for NexusGraph.
+
+Why this matters for the Hackathon:
+1. Track 02 (Agent Memory & Coordination) explicitly asks for "Separate memory per user or tenant".
+2. FalkorDB supports thousands of isolated sparse-matrix graphs inside a single instance.
+3. Calling `get_graph(workspace_id)` gives each project/tenant its own isolated knowledge graph!
+"""
+
+import os
+from dotenv import load_dotenv
+from falkordb import FalkorDB, Graph
+
+load_dotenv()
+
+FALKORDB_HOST = os.getenv("FALKORDB_HOST", "localhost")
+FALKORDB_PORT = int(os.getenv("FALKORDB_PORT", "6379"))
+FALKORDB_USERNAME = os.getenv("FALKORDB_USERNAME", None)
+FALKORDB_PASSWORD = os.getenv("FALKORDB_PASSWORD", None)
+DEFAULT_WORKSPACE = os.getenv("DEFAULT_WORKSPACE", "NexusDemo")
+
+
+class FalkorDBManager:
+    """Singleton-style connection manager for FalkorDB multi-graph operations."""
+
+    def __init__(self) -> None:
+        self.client = FalkorDB(
+            host=FALKORDB_HOST,
+            port=FALKORDB_PORT,
+            username=FALKORDB_USERNAME,
+            password=FALKORDB_PASSWORD,
+        )
+
+    def get_graph(self, workspace_id: str = DEFAULT_WORKSPACE) -> Graph:
+        """
+        Selects an isolated graph by workspace_id (tenant name).
+        If the graph doesn't exist yet, FalkorDB creates it automatically on first write.
+        """
+        return self.client.select_graph(workspace_id)
+
+    def list_workspaces(self) -> list[str]:
+        """Returns all active tenant graphs currently stored in FalkorDB."""
+        return self.client.list_graphs()
+
+    def health_check(self, workspace_id: str = DEFAULT_WORKSPACE) -> dict:
+        """Runs a fast Cypher query to verify FalkorDB connectivity and count nodes/edges."""
+        graph = self.get_graph(workspace_id)
+        node_res = graph.query("MATCH (n) RETURN count(n) AS total_nodes")
+        edge_res = graph.query("MATCH ()-[r]->() RETURN count(r) AS total_edges")
+
+        total_nodes = node_res.result_set[0][0] if node_res.result_set else 0
+        total_edges = edge_res.result_set[0][0] if edge_res.result_set else 0
+
+        return {
+            "status": "connected",
+            "host": f"{FALKORDB_HOST}:{FALKORDB_PORT}",
+            "active_workspace": workspace_id,
+            "all_workspaces": self.list_workspaces(),
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "query_time_ms": round(node_res.run_time_ms, 3),
+        }
+
+
+db_manager = FalkorDBManager()
+
+
+if __name__ == "__main__":
+    print("Testing FalkorDB Connection...")
+    info = db_manager.health_check("NexusDemo")
+    for k, v in info.items():
+        print(f"  {k}: {v}")
+
